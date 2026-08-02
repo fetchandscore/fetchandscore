@@ -1,5 +1,0 @@
-client_id: 3docdpb72qomf24o70blvnmd3t
-redirect_url: https://fetchandscore.com
-logout_url: https://fetchandscore.com
-type: code
-scope: openid+email+profile
