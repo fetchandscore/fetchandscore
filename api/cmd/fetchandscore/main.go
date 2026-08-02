@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -119,7 +120,14 @@ func loadConfig() config {
 	// The frontend is served from the site origin, so that is the only origin
 	// allowed to call the API unless told otherwise.
 	cfg.allowedOrigin = env("FNS_ALLOWED_ORIGIN", cfg.baseURL)
-	cfg.secureCookies = envBool("FNS_SECURE_COOKIES", !cfg.dev)
+
+	// Derived from the site's own scheme rather than from the development
+	// flag. A cookie without Secure travels over plain HTTP, so getting this
+	// wrong hands out sessions; deriving it means an HTTPS deployment cannot
+	// ship insecure cookies even if someone leaves FNS_DEV set. Only a site
+	// actually served over http:// — which in practice means a laptop — opts
+	// out, and it can still be forced either way.
+	cfg.secureCookies = envBool("FNS_SECURE_COOKIES", !strings.HasPrefix(cfg.baseURL, "http://"))
 	return cfg
 }
 

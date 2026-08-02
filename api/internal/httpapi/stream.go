@@ -104,6 +104,11 @@ func writeSSE(w http.ResponseWriter, ev Event) error {
 	if err != nil {
 		return fmt.Errorf("marshalling %s: %w", ev.Name, err)
 	}
+	// nosemgrep: go.lang.security.audit.xss.no-fprintf-to-responsewriter.no-fprintf-to-responsewriter
+	// The rule guards against unescaped HTML. This is an event stream, not a
+	// document: the response is text/event-stream, the payload is the output of
+	// json.Marshal, and the event name is a constant chosen in this package.
+	// html/template would corrupt the JSON rather than protect anything.
 	_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", ev.ID, ev.Name, payload)
 	return err
 }

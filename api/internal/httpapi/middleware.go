@@ -116,7 +116,12 @@ func (s *Server) sessionCookieFor(token string, expires time.Time) *http.Cookie 
 		// HttpOnly keeps the token out of reach of any script, so an XSS
 		// anywhere on the site cannot walk off with a session.
 		HttpOnly: true,
-		Secure:   s.cfg.SecureCookies,
+		// nosemgrep: go.lang.security.audit.net.cookie-missing-secure.cookie-missing-secure
+		// Not a literal true because a laptop serving over http:// cannot use a
+		// Secure cookie at all and sign-in would be untestable. The value is
+		// derived from the site's own scheme in cmd/fetchandscore, so anything
+		// served over HTTPS gets Secure whatever the flags say.
+		Secure: s.cfg.SecureCookies,
 		// Lax rather than Strict: the sign-in link arrives from an email
 		// client, and Strict would drop the cookie on that first navigation.
 		SameSite: http.SameSiteLaxMode,
