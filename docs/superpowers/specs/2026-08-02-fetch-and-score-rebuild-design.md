@@ -12,7 +12,7 @@ This plan covers **slice 1 only** — scoring one round end-to-end. Season stand
 
 | Area | Decision |
 |---|---|
-| Repo | Single monorepo. Rename `fetchandscore/fetchandscore.github.io` → `fetchandscore/fetchandscore`; archive `fetchandscore/backend`. Pages deploys from this same repo — no cross-repo publishing. |
+| Repo | Single monorepo at `fetchandscore/fetchandscore` (renamed from `fetchandscore.github.io`; `fetchandscore/backend` archived). Pages deploys from this same repo via Actions — no cross-repo publishing. |
 | Backend | Go, `net/http` stdlib routing, SQLite via `modernc.org/sqlite` (pure Go → static binary). |
 | Frontend | Plain HTML + Alpine.js + JSON API + SSE. No SSG, no Jekyll, no Ruby. |
 | CSS | Tailwind via the standalone CLI binary — no Node, no `node_modules` for the build. |
@@ -284,3 +284,56 @@ Steps 2–5 and 6–8 each land as reviewable increments; 9–11 can proceed in 
 - Exact TTS voice for the cue clips (a listening test on a phone at the field beats any spec).
 - Mailgun sending domain and DNS records (SPF/DKIM) for `fetchandscore.com`.
 - Whether the pre-roll counts down from 3 seconds silently with only "ready, set, GO", or speaks "3, 2, 1" as well.
+
+
+## Built and shipped
+
+Slice one is complete and live at `fetchandscore.com`. What differed from the
+plan above, and why:
+
+**Alpine cannot hold objects that use private class fields.** It wraps
+component state in a reactive Proxy, and a `#private` field access through a
+Proxy throws. The timer, write queue, audio and screen lock live in the
+component's closure instead — which is also the more honest arrangement, since
+none of them are view state.
+
+**Tailwind v4 emits only the theme variables it can see written out in the
+source.** The scoring grid built its colour name dynamically, so two of the
+five zones had their variables tree-shaken away and rendered as blank buttons.
+Zone colours are hand-written classes now.
+
+**The Secure flag on the session cookie derives from the base URL's scheme**
+rather than from the development flag, so an HTTPS deployment cannot ship
+insecure cookies even if `FNS_DEV` is left set.
+
+**The write queue tracks refused writes separately from transient failures.**
+A retryable error clears on the next success; a write the server rejected
+outright is a tap that will never be recorded, and the scoring screen says so
+rather than letting it vanish.
+
+### Verified
+
+- Go: `go vet`, `golangci-lint`, `gosec`, `govulncheck`, tests under `-race`.
+  The scoring engine is at 100% statement coverage.
+- Web: 19 unit tests over the queue and cue scheduling, `biome`,
+  `html-validate`.
+- End to end: 7 Playwright tests on a phone viewport against the real API,
+  including going offline mid-round, tapping four further throws, and
+  reconciling to an exact total on reconnect.
+- Cross-cutting: CodeQL, Semgrep, Trivy, jscpd.
+
+### Outstanding
+
+- **HTTPS enforcement on Pages.** The certificate did not re-provision after
+  the repository rename; GitHub's API still reports "the certificate does not
+  exist yet" while serving HTTPS perfectly well. Toggle it in Settings → Pages
+  once it appears.
+- **SonarCloud** needs the project created and `SONAR_TOKEN` added. The job
+  skips itself until then rather than failing.
+- **The API is not deployed yet.** `deploy/README.md` covers the tunnel, the
+  Mailgun DNS records and the first invite.
+- **Phase two:** season standings, handicap application, the mulligan drop and
+  promotion tracking. The schema and `ScoreWeek`/`ScoreSeason` already handle
+  all of it; nothing surfaces it.
+- **One rule interpretation still worth confirming with a league official:**
+  that a zero-point catch carries no bonus at all.
