@@ -43,11 +43,15 @@ jobs:
         working-directory: api
         run: go vet ./...
 
+      # Installed rather than pulled as a prebuilt binary: the released
+      # binaries are compiled against an older Go than this module targets,
+      # and golangci-lint refuses to analyse a newer language version than it
+      # was built with. Building it here guarantees they match.
       - name: Lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          working-directory: api
+        working-directory: api
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+          "$(go env GOPATH)/bin/golangci-lint" run --timeout 5m
 
       # The frontend's point table is generated from the rules engine. If a
       # rule changed without regenerating, the screen would show a number the
@@ -92,7 +96,7 @@ jobs:
           args: -exclude-generated -no-fail -fmt sarif -out gosec.sarif ./api/...
 
       - name: Dependency and filesystem CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: fs
           scan-ref: .

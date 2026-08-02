@@ -96,7 +96,7 @@
       <button type="submit" :disabled="state === 'sending'"
               class="tap rounded-xl py-4 text-lg font-extrabold disabled:opacity-60"
               style="background: var(--color-zone-3); color: white"
-              x-text="state === 'sending' ? 'Sending…' : 'Email me a link'"></button>
+              x-text="state === 'sending' ? 'Sending…' : 'Email me a link'">Email me a link</button>
 
       <template x-if="message && state === 'idle'">
         <p class="text-sm font-semibold" style="color: var(--color-miss)" x-text="message"></p>

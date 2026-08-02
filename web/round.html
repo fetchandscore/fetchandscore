@@ -76,8 +76,9 @@
             <button type="button" @click="toggleMute()"
                     class="tap rounded-lg px-3 py-2 text-sm font-bold"
                     style="border: 1px solid var(--border)"
+                    aria-label="Mute cues"
                     :aria-label="muted ? 'Unmute cues' : 'Mute cues'"
-                    x-text="muted ? '🔇' : '🔊'"></button>
+                    x-text="muted ? '🔇' : '🔊'">🔊</button>
           </div>
         </div>
 
@@ -133,13 +134,13 @@
             <div class="grid grid-cols-2 gap-2">
               <button type="button" class="zone-btn tap" :class="'tone-' + z.tone"
                       @click="record(z.zone, false)">
-                <span class="label" x-text="z.label"></span>
-                <span class="points" x-text="zonePoints(z.zone, false)"></span>
+                <span class="label" x-text="z.label">zone</span>
+                <span class="points" x-text="zonePoints(z.zone, false)">0</span>
               </button>
               <button type="button" class="zone-btn tap is-air" :class="'tone-' + z.tone"
                       @click="record(z.zone, true)">
-                <span class="label" x-text="z.label + ' + AIR'"></span>
-                <span class="points" x-text="zonePoints(z.zone, true)"></span>
+                <span class="label" x-text="z.label + ' + AIR'">zone + AIR</span>
+                <span class="points" x-text="zonePoints(z.zone, true)">0</span>
               </button>
             </div>
           </template>
@@ -147,7 +148,7 @@
           <button type="button" class="zone-btn tap tone-zone-0"
                   @click="record('0-10', false)">
             <span class="label">0-10 yd / out of bounds</span>
-            <span class="points" x-text="zonePoints('0-10', false)"></span>
+            <span class="points" x-text="zonePoints('0-10', false)">0</span>
           </button>
 
           <button type="button" class="zone-btn tap tone-miss"
