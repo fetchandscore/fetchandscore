@@ -12,7 +12,10 @@
 // half-points. Convert to display points only at the edge, with Points.
 package scoring
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 // HalfPoints is a score expressed in half-point units: 1 point is 2 HalfPoints.
 type HalfPoints int
@@ -53,6 +56,23 @@ func (z Zone) String() string {
 	return "unknown"
 }
 
+// AllZones returns every zone, in field order from a miss out to beyond the
+// far line. It is the source for building UI controls and for exhaustive tests.
+func AllZones() []Zone {
+	return []Zone{ZoneMiss, Zone0_10, Zone10_20, Zone20_30, Zone30_40, Zone40_50, ZoneOut}
+}
+
+// ParseZone is the inverse of Zone.String, for values arriving from the
+// database or over the wire.
+func ParseZone(s string) (Zone, error) {
+	for z, name := range zoneNames {
+		if name == s {
+			return z, nil
+		}
+	}
+	return ZoneMiss, fmt.Errorf("unknown zone %q", s)
+}
+
 // Division is the handler's skill division, which determines their handicap.
 type Division int
 
@@ -62,6 +82,35 @@ const (
 	DivisionMaster
 	DivisionExpert
 )
+
+var divisionNames = map[Division]string{
+	DivisionJunior:  "junior",
+	DivisionHandler: "handler",
+	DivisionMaster:  "master",
+	DivisionExpert:  "expert",
+}
+
+func (d Division) String() string {
+	if n, ok := divisionNames[d]; ok {
+		return n
+	}
+	return "unknown"
+}
+
+// AllDivisions returns every division, least to most advanced.
+func AllDivisions() []Division {
+	return []Division{DivisionJunior, DivisionHandler, DivisionMaster, DivisionExpert}
+}
+
+// ParseDivision is the inverse of Division.String.
+func ParseDivision(s string) (Division, error) {
+	for d, name := range divisionNames {
+		if name == s {
+			return d, nil
+		}
+	}
+	return DivisionExpert, fmt.Errorf("unknown division %q", s)
+}
 
 // Throw is one scored attempt within a round.
 type Throw struct {

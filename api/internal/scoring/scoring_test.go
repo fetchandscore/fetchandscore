@@ -53,6 +53,63 @@ func TestZone_String(t *testing.T) {
 	}
 }
 
+// Zones cross the wire and land in the database as text. Parsing must be the
+// exact inverse of String, or a round read back is not the round played.
+func TestParseZone(t *testing.T) {
+	for _, z := range AllZones() {
+		got, err := ParseZone(z.String())
+		if err != nil {
+			t.Errorf("ParseZone(%q): %v", z.String(), err)
+			continue
+		}
+		if got != z {
+			t.Errorf("ParseZone(%q) = %v, want %v", z.String(), got, z)
+		}
+	}
+}
+
+func TestParseZone_RejectsUnknown(t *testing.T) {
+	for _, in := range []string{"", "unknown", "10-30", "MISS", " miss"} {
+		if _, err := ParseZone(in); err == nil {
+			t.Errorf("ParseZone(%q) succeeded, want an error", in)
+		}
+	}
+}
+
+func TestAllZones_CoversEveryZone(t *testing.T) {
+	if got, want := len(AllZones()), len(zoneNames); got != want {
+		t.Errorf("AllZones has %d entries, but %d zones are named", got, want)
+	}
+}
+
+func TestParseDivision(t *testing.T) {
+	for _, d := range AllDivisions() {
+		got, err := ParseDivision(d.String())
+		if err != nil {
+			t.Errorf("ParseDivision(%q): %v", d.String(), err)
+			continue
+		}
+		if got != d {
+			t.Errorf("ParseDivision(%q) = %v, want %v", d.String(), got, d)
+		}
+	}
+
+	if _, err := ParseDivision("beginner"); err == nil {
+		t.Error("ParseDivision(\"beginner\") succeeded, want an error")
+	}
+}
+
+func TestDivision_String_NamesEveryDivision(t *testing.T) {
+	if got := Division(99).String(); got != "unknown" {
+		t.Errorf("Division(99).String() = %q, want %q", got, "unknown")
+	}
+	for _, d := range AllDivisions() {
+		if d.String() == "unknown" {
+			t.Errorf("division %d has no name", int(d))
+		}
+	}
+}
+
 // Zone values for a standard dog, from the rules:
 //
 //	0-10 yards = 0 points
