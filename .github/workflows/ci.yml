@@ -205,9 +205,12 @@ jobs:
     name: SonarCloud
     runs-on: ubuntu-latest
     needs: [go]
-    # A fork's pull request has no access to the token, and failing the build
-    # over that would block outside contributions for no security gain.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Skipped when the token is absent: on a fork's pull request, which has no
+    # access to secrets, and before the SonarCloud project exists. A missing
+    # token is a setup gap, not a code defect, and should not paint CI red.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
         with:
@@ -221,5 +224,6 @@ jobs:
           path: api
 
       - uses: SonarSource/sonarqube-scan-action@v4
+        if: env.SONAR_TOKEN != ''
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -60,8 +60,9 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	// Tell the browser how long to wait before reconnecting, then prove the
 	// stream is open so the client can drop any "connecting" state.
-	fmt.Fprint(w, "retry: 3000\n\n")
-	fmt.Fprint(w, ": connected\n\n")
+	if _, err := fmt.Fprint(w, "retry: 3000\n\n: connected\n\n"); err != nil {
+		return
+	}
 	flusher.Flush()
 
 	ticker := time.NewTicker(heartbeatInterval)
@@ -85,7 +86,14 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 		case <-ticker.C:
 			// A comment is a no-op to the EventSource API but real bytes to
 			// every proxy between here and the phone.
-			fmt.Fprint(w, ": keep-alive\n\n")
+			//
+			// A failed write here is the point of the heartbeat: it is how a
+			// client that vanished without closing cleanly gets noticed, so
+			// the goroutine and its subscription can be released.
+			if _, err := fmt.Fprint(w, ": keep-alive\n\n"); err != nil {
+				s.log.Debug("stream heartbeat failed", "session", sessionID, "error", err)
+				return
+			}
 			flusher.Flush()
 		}
 	}
