@@ -1,7 +1,7 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
-import { WriteQueue, newClientId } from './queue.js';
+import { newClientId, WriteQueue } from './queue.js';
 
 /** An in-memory stand-in for localStorage. */
 function fakeStorage() {
@@ -104,10 +104,16 @@ test('drops a write the server will never accept, rather than blocking behind it
 test('pending writes survive a reload', async () => {
   const storage = fakeStorage();
 
-  const first = new WriteQueue('r1', async () => { throw apiError(0, true); }, {
-    storage,
-    sleep: neverWake,
-  });
+  const first = new WriteQueue(
+    'r1',
+    async () => {
+      throw apiError(0, true);
+    },
+    {
+      storage,
+      sleep: neverWake,
+    },
+  );
   first.enqueue({ zone: '40-50', client_id: 'a' });
   first.enqueue({ zone: '30-40', client_id: 'b' });
 
@@ -125,10 +131,16 @@ test('pending writes survive a reload', async () => {
 
 test('clearing a queue empties its storage too', () => {
   const storage = fakeStorage();
-  const q = new WriteQueue('r1', async () => { throw apiError(0, true); }, {
-    storage,
-    sleep: neverWake,
-  });
+  const q = new WriteQueue(
+    'r1',
+    async () => {
+      throw apiError(0, true);
+    },
+    {
+      storage,
+      sleep: neverWake,
+    },
+  );
 
   q.enqueue({ zone: '40-50' });
   assert.equal(storage.size, 1);
@@ -140,9 +152,15 @@ test('clearing a queue empties its storage too', () => {
 
 test('survives unusable storage', async () => {
   const broken = {
-    getItem() { throw new Error('denied'); },
-    setItem() { throw new Error('denied'); },
-    removeItem() { throw new Error('denied'); },
+    getItem() {
+      throw new Error('denied');
+    },
+    setItem() {
+      throw new Error('denied');
+    },
+    removeItem() {
+      throw new Error('denied');
+    },
   };
 
   const sent = [];

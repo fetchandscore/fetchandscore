@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Results · Fetch and Score</title>
+  <meta name="fns-api-base" content="">
+  <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.build.css">
+  <script type="module">
+    import { api } from './js/api.js';
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('results', () => ({
+        loading: true,
+        error: null,
+        session: null,
+
+        async init() {
+          const id = new URLSearchParams(location.search).get('session');
+          if (!id) {
+            this.error = 'This link is missing a session.';
+            this.loading = false;
+            return;
+          }
+          try {
+            // The public endpoint needs no account, so a handler can share
+            // this link with anyone. It returns confirmed rounds only.
+            this.session = await api.publicSession(id);
+            document.title = `${this.session.name || 'Results'} · ${this.session.club_name}`;
+          } catch (err) {
+            this.error = err.message;
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        points(v) {
+          return Number.isInteger(v) ? String(v) : v.toFixed(1);
+        },
+
+        total(team) {
+          return team.rounds.reduce((sum, r) => sum + (r.total_points ?? 0), 0);
+        },
+
+        /** Teams ranked by confirmed score, highest first. */
+        get standings() {
+          return [...this.session.teams]
+            .filter((t) => t.rounds.length > 0)
+            .sort((a, b) => this.total(b) - this.total(a));
+        },
+
+        get pending() {
+          return this.session.teams.filter((t) => t.rounds.length === 0).length;
+        },
+      }));
+    });
+  </script>
+  <script src="js/alpine.min.js" defer></script>
+</head>
+
+<body>
+<main x-data="results" x-cloak class="mx-auto max-w-md p-4">
+
+  <template x-if="loading">
+    <p style="color: var(--dim)">Loading results…</p>
+  </template>
+
+  <template x-if="error">
+    <p class="font-bold" style="color: var(--color-miss)" x-text="error"></p>
+  </template>
+
+  <template x-if="!loading && !error">
+    <div>
+      <header class="mb-5">
+        <h1 class="text-2xl font-extrabold" x-text="session.name || 'Results'"></h1>
+        <p class="text-sm" style="color: var(--dim)">
+          <span x-text="session.club_name"></span> · <span x-text="session.format.name"></span>
+        </p>
+      </header>
+
+      <template x-if="standings.length === 0">
+        <p style="color: var(--dim)">No rounds have been confirmed yet.</p>
+      </template>
+
+      <ol class="flex flex-col gap-2">
+        <template x-for="(team, i) in standings" :key="team.season_entry_id">
+          <li class="card flex items-center gap-3 p-3">
+            <span class="clock w-8 text-center text-xl" style="color: var(--dim)" x-text="i + 1"></span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate font-bold" x-text="team.team_name"></p>
+              <p class="text-xs" style="color: var(--dim)">
+                <span x-text="team.division"></span>
+                <template x-if="team.tiny"><span> · tiny</span></template>
+                <template x-if="team.roller"><span> · roller</span></template>
+                ·
+                <template x-for="(r, j) in team.rounds" :key="r.id">
+                  <span><span x-show="j > 0"> + </span><span x-text="points(r.total_points)"></span></span>
+                </template>
+              </p>
+            </div>
+            <span class="clock text-2xl" x-text="points(total(team))"></span>
+          </li>
+        </template>
+      </ol>
+
+      <template x-if="pending > 0">
+        <p class="mt-4 text-center text-sm" style="color: var(--dim)">
+          <span x-text="pending"></span> team(s) still to be confirmed.
+        </p>
+      </template>
+
+      <p class="mt-6 text-center text-xs" style="color: var(--dim)">
+        Scores shown are confirmed rounds only.<br>
+        Handicaps and the dropped week are applied to season standings, not here.
+      </p>
+    </div>
+  </template>
+</main>
+</body>
+</html>

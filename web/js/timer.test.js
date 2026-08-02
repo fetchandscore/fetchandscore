@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { buildCueSchedule, cueForSecond, formatClock, PREROLL_SECONDS } from './timer.js';
 
@@ -56,7 +56,10 @@ test('the schedule is ordered, so cues can be scheduled in one pass', () => {
   const schedule = buildCueSchedule(90, [60, 30, 10, 5, 4, 3, 2, 1]);
   const offsets = schedule.map((s) => s.at);
 
-  assert.deepEqual(offsets, [...offsets].sort((a, b) => a - b));
+  assert.deepEqual(
+    offsets,
+    [...offsets].sort((a, b) => a - b),
+  );
 });
 
 test('only the marks with recorded audio are spoken', () => {

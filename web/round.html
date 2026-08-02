@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Scoring · Fetch and Score</title>
+  <meta name="theme-color" content="#101418">
+  <!-- Override for local development; defaults to the production API. -->
+  <meta name="fns-api-base" content="">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.build.css">
+  <script type="module">
+    import { roundScreen } from './js/round.js';
+    document.addEventListener('alpine:init', () => Alpine.data('roundScreen', roundScreen));
+  </script>
+  <script src="js/alpine.min.js" defer></script>
+</head>
+
+<body>
+<main x-data="roundScreen" x-cloak class="mx-auto flex min-h-dvh max-w-md flex-col">
+
+  <!-- Loading and error states, before anything else is safe to render. -->
+  <template x-if="loading">
+    <p class="p-8 text-center text-lg" style="color: var(--dim)">Loading round…</p>
+  </template>
+
+  <template x-if="error">
+    <div class="p-6">
+      <p class="text-lg font-bold" style="color: var(--color-miss)" x-text="error"></p>
+      <a href="index.html" class="mt-4 inline-block underline">Back to your sessions</a>
+    </div>
+  </template>
+
+  <template x-if="!loading && !error">
+    <div class="flex min-h-dvh flex-col">
+
+      <!-- Header: who is throwing, the clock, and the score. -->
+      <header class="sticky top-0 z-10 px-3 pt-3 pb-2"
+              style="background: var(--bg); border-bottom: 1px solid var(--border)">
+        <div class="flex items-baseline justify-between gap-2">
+          <div class="min-w-0">
+            <p class="truncate text-lg font-extrabold leading-tight" x-text="team.team_name"></p>
+            <p class="text-xs" style="color: var(--dim)">
+              Round <span x-text="round.number"></span>
+              · <span x-text="team.division"></span>
+              <template x-if="team.tiny"><span> · tiny</span></template>
+              <template x-if="team.roller"><span> · roller</span></template>
+            </p>
+          </div>
+          <div class="text-right">
+            <p class="clock text-4xl leading-none" x-text="scoreText"></p>
+            <p class="text-[0.65rem] uppercase tracking-wide" style="color: var(--dim)">points</p>
+          </div>
+        </div>
+
+        <div class="mt-2 flex items-center justify-between gap-2">
+          <p class="clock text-5xl leading-none" :class="urgent && 'clock-urgent'" x-text="clock"></p>
+
+          <div class="flex items-center gap-2">
+            <!-- Connection, pending writes, and mute: the three things a
+                 scorekeeper needs to glance at without stopping. -->
+            <span class="pill"
+                  :style="connection === 'live'
+                    ? 'background: color-mix(in oklch, var(--color-zone-3) 22%, transparent); color: var(--color-zone-3)'
+                    : 'background: color-mix(in oklch, var(--color-miss) 22%, transparent); color: var(--color-miss)'">
+              <span x-text="connection === 'live' ? 'live' : connection"></span>
+            </span>
+
+            <template x-if="pending > 0">
+              <span class="pill" style="background: color-mix(in oklch, var(--color-air) 25%, transparent); color: var(--color-air)">
+                <span x-text="pending"></span> saving
+              </span>
+            </template>
+
+            <button type="button" @click="toggleMute()"
+                    class="tap rounded-lg px-3 py-2 text-sm font-bold"
+                    style="border: 1px solid var(--border)"
+                    :aria-label="muted ? 'Unmute cues' : 'Mute cues'"
+                    x-text="muted ? '🔇' : '🔊'"></button>
+          </div>
+        </div>
+
+        <p class="mt-1 text-xs font-semibold" style="color: var(--dim)" x-text="statusLabel"></p>
+
+        <template x-if="queueError">
+          <p class="mt-1 text-xs font-semibold" style="color: var(--color-miss)" x-text="queueError"></p>
+        </template>
+        <template x-if="dropped > 0">
+          <p class="mt-1 text-xs font-bold" style="color: var(--color-miss)">
+            <span x-text="dropped"></span> throw(s) could not be saved. This round is incomplete.
+          </p>
+        </template>
+      </header>
+
+      <!-- The preroll takes over the screen: "Ready, set, GO" is the one
+           moment nothing else matters. -->
+      <template x-if="phase === 'preroll'">
+        <div class="flex flex-1 items-center justify-center">
+          <p class="clock text-[8rem] leading-none" x-text="prerollCount"></p>
+        </div>
+      </template>
+
+      <!-- Before the round: one big START. -->
+      <template x-if="phase === 'ready'">
+        <div class="flex flex-1 flex-col items-center justify-center gap-6 p-6">
+          <button type="button" @click="start()"
+                  class="tap w-full rounded-3xl py-12 text-4xl font-extrabold"
+                  style="background: var(--color-zone-3); color: white">
+            START
+          </button>
+          <p class="text-center text-sm" style="color: var(--dim)">
+            <span x-text="session.format.round_seconds"></span>-second round ·
+            <span x-text="session.format.name"></span><br>
+            Cues play on this device. Tap START to enable sound.
+          </p>
+        </div>
+      </template>
+
+      <!-- The scoring grid. Every outcome is its own button, so there is no
+           mode to leave armed and mis-score with. -->
+      <template x-if="canScore">
+        <div class="flex flex-1 flex-col gap-2 p-2">
+          <template x-if="phase === 'grace'">
+            <p class="rounded-lg px-3 py-2 text-center text-sm font-bold"
+               style="background: color-mix(in oklch, var(--color-air) 22%, transparent); color: var(--color-air)">
+              Time called — a throw released before the “T” still counts
+              (<span x-text="graceRemaining"></span>s)
+            </p>
+          </template>
+
+          <template x-for="z in zones" :key="z.zone">
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" class="zone-btn tap" :class="'tone-' + z.tone"
+                      @click="record(z.zone, false)">
+                <span class="label" x-text="z.label"></span>
+                <span class="points" x-text="zonePoints(z.zone, false)"></span>
+              </button>
+              <button type="button" class="zone-btn tap is-air" :class="'tone-' + z.tone"
+                      @click="record(z.zone, true)">
+                <span class="label" x-text="z.label + ' + AIR'"></span>
+                <span class="points" x-text="zonePoints(z.zone, true)"></span>
+              </button>
+            </div>
+          </template>
+
+          <button type="button" class="zone-btn tap tone-zone-0"
+                  @click="record('0-10', false)">
+            <span class="label">0-10 yd / out of bounds</span>
+            <span class="points" x-text="zonePoints('0-10', false)"></span>
+          </button>
+
+          <button type="button" class="zone-btn tap tone-miss"
+                  @click="record('miss', false)">
+            <span class="label">✗</span>
+            <span class="points" style="font-size: 1.3rem; letter-spacing: 0.2em">MISS</span>
+          </button>
+
+          <!-- The tally strip: what has been recorded, most recent last. -->
+          <div class="mt-1 flex items-center gap-2">
+            <div class="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+              <template x-for="(t, i) in liveThrows" :key="t.client_id">
+                <span class="shrink-0 rounded px-1.5 py-1 text-xs font-bold"
+                      style="background: var(--surface); border: 1px solid var(--border)"
+                      x-text="shortLabel(t)"></span>
+              </template>
+              <template x-if="liveThrows.length === 0">
+                <span class="text-xs" style="color: var(--dim)">No throws yet</span>
+              </template>
+            </div>
+            <button type="button" @click="undo()"
+                    class="tap shrink-0 rounded-lg px-3 py-2 text-sm font-bold"
+                    style="border: 1px solid var(--border)">↶ Undo</button>
+          </div>
+
+          <div class="flex gap-2 pb-2">
+            <button type="button" @click="falseStart()"
+                    class="tap flex-1 rounded-xl py-3 text-sm font-bold"
+                    style="border: 1px solid var(--border); color: var(--dim)">
+              False start
+            </button>
+            <button type="button" @click="confirm()"
+                    class="tap flex-[2] rounded-xl py-3 text-lg font-extrabold"
+                    style="background: var(--color-zone-3); color: white">
+              Confirm round
+            </button>
+          </div>
+        </div>
+      </template>
+
+      <!-- After confirmation the round is the official score. -->
+      <template x-if="phase === 'done'">
+        <div class="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+          <p class="text-sm uppercase tracking-widest" style="color: var(--dim)">Final</p>
+          <p class="clock text-7xl" x-text="scoreText"></p>
+          <p style="color: var(--dim)">points</p>
+          <a :href="`session.html?session=${session.id}`"
+             class="tap mt-4 rounded-xl px-6 py-3 font-bold"
+             style="background: var(--color-zone-2); color: white">Back to session</a>
+        </div>
+      </template>
+
+    </div>
+  </template>
+</main>
+
+</body>
+</html>

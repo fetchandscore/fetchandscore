@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Fetch and Score">
+  <rect width="512" height="512" rx="112" fill="#101418"/>
+  <ellipse cx="256" cy="268" rx="168" ry="60" fill="#e8944a"/>
+  <ellipse cx="256" cy="250" rx="168" ry="60" fill="#f6b56b"/>
+  <ellipse cx="256" cy="250" rx="96" ry="30" fill="#e8944a"/>
+  <ellipse cx="256" cy="244" rx="96" ry="30" fill="#c97a34"/>
+</svg>

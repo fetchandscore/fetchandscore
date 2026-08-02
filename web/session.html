@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Session · Fetch and Score</title>
+  <meta name="fns-api-base" content="">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.build.css">
+  <script type="module">
+    import { api, ApiError } from './js/api.js';
+    import { watchSession, Connection } from './js/stream.js';
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('sessionView', () => ({
+        loading: true,
+        error: null,
+        session: null,
+        connection: Connection.CONNECTING,
+        sessionId: null,
+
+        async init() {
+          this.sessionId = new URLSearchParams(location.search).get('session');
+          if (!this.sessionId) {
+            this.error = 'This link is missing a session.';
+            this.loading = false;
+            return;
+          }
+
+          try {
+            this.session = await api.session(this.sessionId);
+          } catch (err) {
+            if (err instanceof ApiError && err.isAuth) {
+              location.replace(`auth.html?next=${encodeURIComponent(location.pathname + location.search)}`);
+              return;
+            }
+            this.error = err.message;
+            this.loading = false;
+            return;
+          }
+          this.loading = false;
+
+          // The running order updates as rounds finish, so everyone on the
+          // sideline sees the same board without refreshing.
+          const apply = (payload) => this.applyRound(payload?.round);
+          const stream = watchSession(
+            this.sessionId,
+            {
+              'throw.added': apply,
+              'throw.voided': apply,
+              'round.started': apply,
+              'round.confirmed': apply,
+              'round.reset': apply,
+            },
+            (state) => { this.connection = state; },
+          );
+          addEventListener('pagehide', () => stream.close());
+        },
+
+        applyRound(round) {
+          if (!round) return;
+          for (const team of this.session.teams) {
+            const i = team.rounds.findIndex((r) => r.id === round.id);
+            if (i !== -1) {
+              team.rounds[i] = { ...team.rounds[i], ...round };
+              return;
+            }
+          }
+        },
+
+        points(v) {
+          return Number.isInteger(v) ? String(v) : v.toFixed(1);
+        },
+
+        teamTotal(team) {
+          return this.points(team.rounds.reduce((sum, r) => sum + (r.total_points ?? 0), 0));
+        },
+
+        statusTone(status) {
+          return {
+            ready: 'var(--dim)',
+            running: 'var(--color-live)',
+            grace: 'var(--color-air)',
+            confirmed: 'var(--color-zone-3)',
+          }[status] ?? 'var(--dim)';
+        },
+      }));
+    });
+  </script>
+  <script src="js/alpine.min.js" defer></script>
+</head>
+
+<body>
+<main x-data="sessionView" x-cloak class="mx-auto max-w-md p-4">
+
+  <template x-if="loading">
+    <p style="color: var(--dim)">Loading…</p>
+  </template>
+
+  <template x-if="error">
+    <div>
+      <p class="font-bold" style="color: var(--color-miss)" x-text="error"></p>
+      <a href="index.html" class="mt-4 inline-block underline">Back to your sessions</a>
+    </div>
+  </template>
+
+  <template x-if="!loading && !error">
+    <div>
+      <header class="mb-5">
+        <a href="index.html" class="text-sm underline" style="color: var(--dim)">← Sessions</a>
+        <div class="mt-2 flex items-baseline justify-between gap-2">
+          <h1 class="text-2xl font-extrabold" x-text="session.name || 'Session'"></h1>
+          <span class="pill"
+                :style="connection === 'live'
+                  ? 'background: color-mix(in oklch, var(--color-zone-3) 22%, transparent); color: var(--color-zone-3)'
+                  : 'background: color-mix(in oklch, var(--color-miss) 22%, transparent); color: var(--color-miss)'"
+                x-text="connection"></span>
+        </div>
+        <p class="text-sm" style="color: var(--dim)">
+          <span x-text="session.club_name"></span> ·
+          <span x-text="session.format.name"></span> ·
+          <span x-text="session.format.round_seconds"></span>s rounds
+        </p>
+      </header>
+
+      <!-- Running order. Tapping a round opens the scoring screen. -->
+      <ol class="flex flex-col gap-3">
+        <template x-for="team in session.teams" :key="team.season_entry_id">
+          <li class="card p-3">
+            <div class="flex items-baseline justify-between gap-2">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold" x-text="team.team_name"></p>
+                <p class="text-xs" style="color: var(--dim)">
+                  <span x-text="team.division"></span>
+                  <template x-if="team.tiny"><span> · tiny</span></template>
+                  <template x-if="team.roller"><span> · roller</span></template>
+                </p>
+              </div>
+              <p class="clock text-2xl" x-text="teamTotal(team)"></p>
+            </div>
+
+            <div class="mt-2 grid gap-2" :style="`grid-template-columns: repeat(${Math.max(team.rounds.length,1)}, minmax(0,1fr))`">
+              <template x-for="r in team.rounds" :key="r.id">
+                <a :href="`round.html?session=${session.id}&round=${r.id}`"
+                   class="tap rounded-lg px-2 py-3 text-center"
+                   style="border: 1px solid var(--border)">
+                  <span class="block text-[0.65rem] uppercase tracking-wide" style="color: var(--dim)">
+                    Round <span x-text="r.number"></span>
+                  </span>
+                  <span class="clock block text-xl" x-text="points(r.total_points)"></span>
+                  <span class="block text-[0.65rem] font-bold uppercase"
+                        :style="`color: ${statusTone(r.status)}`" x-text="r.status"></span>
+                </a>
+              </template>
+            </div>
+          </li>
+        </template>
+      </ol>
+
+      <p class="mt-6 text-center text-sm">
+        <a :href="`results.html?session=${session.id}`" class="underline" style="color: var(--dim)">
+          Public results page
+        </a>
+      </p>
+    </div>
+  </template>
+</main>
+</body>
+</html>

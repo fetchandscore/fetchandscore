@@ -1,8 +1,10 @@
 # build output
 /web/css/app.build.css
-/web/js/scoring-table.js
 /build/
 /dist/
+
+# NOTE: web/js/scoring-table.js is generated but committed on purpose, so a
+# plain checkout runs without a build. CI regenerates it and fails if it drifts.
 
 # local data
 *.db

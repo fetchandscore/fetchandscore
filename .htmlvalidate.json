@@ -1,0 +1,21 @@
+{
+  "extends": ["html-validate:recommended"],
+  "rules": {
+    "no-inline-style": "off",
+    "attribute-boolean-style": "off",
+    "void-style": "off",
+    "no-unknown-element": "off"
+  },
+  "elements": [
+    "html5",
+    {
+      "*": {
+        "attributes": {
+          "x-data": {}, "x-init": {}, "x-show": {}, "x-if": {}, "x-for": {},
+          "x-text": {}, "x-html": {}, "x-model": {}, "x-cloak": {}, "x-ref": {},
+          "x-bind": {}, "x-on": {}, "x-transition": {}, "x-effect": {}, "x-teleport": {}
+        }
+      }
+    }
+  ]
+}

@@ -11,6 +11,13 @@ export const API_BASE = (() => {
   const meta = document.querySelector('meta[name="fns-api-base"]');
   if (meta?.content) return meta.content.replace(/\/$/, '');
   if (globalThis.FNS_API_BASE) return String(globalThis.FNS_API_BASE).replace(/\/$/, '');
+
+  // Serving the site locally almost certainly means the API is local too, so
+  // point at it rather than at production. Saves editing every page to try a
+  // change, and makes it impossible to accidentally develop against live data.
+  if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+    return 'http://127.0.0.1:8099';
+  }
   return 'https://api.fetchandscore.com';
 })();
 

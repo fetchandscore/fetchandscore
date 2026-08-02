@@ -1,0 +1,46 @@
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+    # Only rebuild when something the site actually serves has changed.
+    paths:
+      - 'web/**'
+      - 'api/internal/scoring/**'
+      - '.github/workflows/deploy-pages.yml'
+      - 'Makefile'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and never cancel one in flight: a half-finished
+# deploy would leave the live site in an unknown state.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache-dependency-path: api/go.sum
+
+      - name: Build the site
+        run: make dist
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

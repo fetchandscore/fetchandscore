@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Your sessions · Fetch and Score</title>
+  <meta name="fns-api-base" content="">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.build.css">
+  <script type="module">
+    import { api, ApiError } from './js/api.js';
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('dashboard', () => ({
+        loading: true,
+        error: null,
+        me: null,
+        active: [],
+        upcoming: [],
+        past: [],
+
+        async init() {
+          try {
+            const [me, dash] = await Promise.all([api.me(), api.dashboard()]);
+            this.me = me;
+            this.active = dash.active;
+            this.upcoming = dash.upcoming;
+            this.past = dash.past;
+          } catch (err) {
+            if (err instanceof ApiError && err.isAuth) {
+              location.replace('auth.html');
+              return;
+            }
+            this.error = err.message;
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        async signOut() {
+          await api.logout().catch(() => {});
+          location.replace('auth.html');
+        },
+
+        when(iso) {
+          const d = new Date(iso);
+          return d.toLocaleString(undefined, {
+            weekday: 'short', month: 'short', day: 'numeric',
+            hour: 'numeric', minute: '2-digit',
+          });
+        },
+      }));
+    });
+  </script>
+  <script src="js/alpine.min.js" defer></script>
+</head>
+
+<body>
+<main x-data="dashboard" x-cloak class="mx-auto max-w-md p-4">
+
+  <header class="mb-6 flex items-baseline justify-between">
+    <h1 class="text-2xl font-extrabold">Fetch and Score</h1>
+    <template x-if="me">
+      <button type="button" @click="signOut()" class="text-sm underline" style="color: var(--dim)">
+        Sign out
+      </button>
+    </template>
+  </header>
+
+  <template x-if="loading">
+    <p style="color: var(--dim)">Loading…</p>
+  </template>
+
+  <template x-if="error">
+    <p class="font-bold" style="color: var(--color-miss)" x-text="error"></p>
+  </template>
+
+  <template x-if="!loading && !error">
+    <div class="flex flex-col gap-8">
+
+      <!-- Happening now comes first: at a field, this is the only section
+           anyone opens the app to reach. -->
+      <section>
+        <h2 class="mb-2 text-xs font-bold uppercase tracking-widest" style="color: var(--dim)">
+          Happening now
+        </h2>
+        <template x-if="active.length === 0">
+          <p class="text-sm" style="color: var(--dim)">Nothing running.</p>
+        </template>
+        <div class="flex flex-col gap-2">
+          <template x-for="s in active" :key="s.id">
+            <a :href="`session.html?session=${s.id}`" class="card tap block p-4"
+               style="border-color: var(--color-zone-3)">
+              <div class="flex items-baseline justify-between gap-2">
+                <p class="font-extrabold" x-text="s.name || 'Session'"></p>
+                <span class="pill" style="background: color-mix(in oklch, var(--color-zone-3) 22%, transparent); color: var(--color-zone-3)">live</span>
+              </div>
+              <p class="mt-1 text-sm" style="color: var(--dim)">
+                <span x-text="s.club_name"></span> ·
+                <span x-text="s.team_count"></span> teams ·
+                <span x-text="when(s.starts_at)"></span>
+              </p>
+            </a>
+          </template>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="mb-2 text-xs font-bold uppercase tracking-widest" style="color: var(--dim)">
+          Coming up
+        </h2>
+        <template x-if="upcoming.length === 0">
+          <p class="text-sm" style="color: var(--dim)">Nothing scheduled.</p>
+        </template>
+        <div class="flex flex-col gap-2">
+          <template x-for="s in upcoming" :key="s.id">
+            <a :href="`session.html?session=${s.id}`" class="card tap block p-4">
+              <p class="font-bold" x-text="s.name || 'Session'"></p>
+              <p class="mt-1 text-sm" style="color: var(--dim)">
+                <span x-text="s.club_name"></span> · <span x-text="when(s.starts_at)"></span>
+              </p>
+            </a>
+          </template>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="mb-2 text-xs font-bold uppercase tracking-widest" style="color: var(--dim)">
+          Past
+        </h2>
+        <template x-if="past.length === 0">
+          <p class="text-sm" style="color: var(--dim)">Nothing yet.</p>
+        </template>
+        <div class="flex flex-col gap-2">
+          <template x-for="s in past" :key="s.id">
+            <a :href="`results.html?session=${s.id}`" class="card tap block p-4" style="opacity: 0.85">
+              <p class="font-bold" x-text="s.name || 'Session'"></p>
+              <p class="mt-1 text-sm" style="color: var(--dim)">
+                <span x-text="s.club_name"></span> · <span x-text="when(s.starts_at)"></span>
+              </p>
+            </a>
+          </template>
+        </div>
+      </section>
+    </div>
+  </template>
+</main>
+</body>
+</html>

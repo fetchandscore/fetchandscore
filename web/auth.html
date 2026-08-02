@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sign in · Fetch and Score</title>
+  <meta name="fns-api-base" content="">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.build.css">
+  <script type="module">
+    import { api } from './js/api.js';
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('signIn', () => ({
+        email: '',
+        // idle -> sending -> sent, or verifying -> failed
+        state: 'idle',
+        message: '',
+
+        async init() {
+          const params = new URLSearchParams(location.search);
+          const token = params.get('token');
+          if (!token) return;
+
+          // The emailed link is a GET to this page, which then POSTs the
+          // token. Mail scanners fetch links to check them; if following the
+          // link consumed the token, a scanned message would burn the sign-in
+          // before the recipient ever clicked it.
+          this.state = 'verifying';
+          try {
+            await api.verify(token);
+            const next = params.get('next') || 'index.html';
+            location.replace(next);
+          } catch (err) {
+            this.state = 'failed';
+            this.message = err.message;
+          }
+        },
+
+        async submit() {
+          if (!this.email.trim()) return;
+          this.state = 'sending';
+          try {
+            await api.requestLink(this.email.trim());
+            this.state = 'sent';
+          } catch (err) {
+            this.state = 'idle';
+            this.message = err.message;
+          }
+        },
+      }));
+    });
+  </script>
+  <script src="js/alpine.min.js" defer></script>
+</head>
+
+<body>
+<main x-data="signIn" x-cloak class="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 p-6">
+
+  <div class="text-center">
+    <h1 class="text-3xl font-extrabold">Fetch and Score</h1>
+    <p class="mt-1 text-sm" style="color: var(--dim)">Toss &amp; Fetch league scoring</p>
+  </div>
+
+  <template x-if="state === 'verifying'">
+    <p class="text-center text-lg">Signing you in…</p>
+  </template>
+
+  <template x-if="state === 'failed'">
+    <div class="card p-5 text-center">
+      <p class="font-bold" style="color: var(--color-miss)">That link didn’t work</p>
+      <p class="mt-2 text-sm" style="color: var(--dim)" x-text="message"></p>
+      <p class="mt-3 text-sm">Request a new one below — links expire after 15 minutes.</p>
+    </div>
+  </template>
+
+  <template x-if="state === 'sent'">
+    <div class="card p-5 text-center">
+      <p class="text-lg font-bold">Check your email</p>
+      <p class="mt-2 text-sm" style="color: var(--dim)">
+        If <span class="font-semibold" x-text="email"></span> is on a club roster,
+        a sign-in link is on its way. It works once and expires in 15 minutes.
+      </p>
+    </div>
+  </template>
+
+  <template x-if="state !== 'verifying' && state !== 'sent'">
+    <form @submit.prevent="submit()" class="flex flex-col gap-3">
+      <label for="email" class="text-sm font-bold">Email address</label>
+      <input id="email" type="email" x-model="email" required autocomplete="email"
+             inputmode="email" placeholder="you@example.com"
+             class="rounded-xl px-4 py-4 text-lg"
+             style="background: var(--surface); border: 1px solid var(--border); color: var(--fg)">
+
+      <button type="submit" :disabled="state === 'sending'"
+              class="tap rounded-xl py-4 text-lg font-extrabold disabled:opacity-60"
+              style="background: var(--color-zone-3); color: white"
+              x-text="state === 'sending' ? 'Sending…' : 'Email me a link'"></button>
+
+      <template x-if="message && state === 'idle'">
+        <p class="text-sm font-semibold" style="color: var(--color-miss)" x-text="message"></p>
+      </template>
+
+      <p class="mt-2 text-center text-xs" style="color: var(--dim)">
+        There’s no password. Clubs are invite-only — ask your captain if you’re not on a roster yet.
+      </p>
+    </form>
+  </template>
+</main>
+</body>
+</html>
