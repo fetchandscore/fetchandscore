@@ -1,0 +1,9 @@
+{
+  "name": "fetchandscore-web",
+  "private": true,
+  "type": "module",
+  "description": "Marks the browser modules as ESM for Node's test runner. There are no dependencies and no build step here; Tailwind is a standalone binary and the JS ships as written.",
+  "scripts": {
+    "test": "node --test 'js/*.test.js'"
+  }
+}

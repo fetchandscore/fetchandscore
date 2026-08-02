@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+/* Scanned sources. The CLI needs telling because the HTML lives beside, not
+   below, this file. */
+@source "../*.html";
+@source "../js/**/*.js";
+
+/*
+  Sunlight is the design constraint here, not taste.
+
+  This gets used outdoors at midday on a phone held at arm's length, often by
+  someone holding a leash. So: near-black on near-white, saturated zone colours
+  that stay distinguishable when the screen is washed out, and type that is
+  frankly too big indoors. Nothing subtle survives a bright field.
+
+  The zone ramp goes cool-to-warm as distance increases, which reads as
+  intensity and, unlike a red/green ramp, survives the common colourblindness
+  types because it also varies in lightness.
+*/
+@theme {
+  --color-ink: oklch(0.18 0.01 250);
+  --color-paper: oklch(0.99 0.002 250);
+  --color-muted: oklch(0.52 0.015 250);
+  --color-line: oklch(0.89 0.008 250);
+
+  --color-zone-0: oklch(0.62 0.02 250);
+  --color-zone-1: oklch(0.60 0.14 230);
+  --color-zone-2: oklch(0.58 0.16 195);
+  --color-zone-3: oklch(0.62 0.17 145);
+  --color-zone-5: oklch(0.65 0.19 75);
+  --color-miss: oklch(0.55 0.20 25);
+  --color-air: oklch(0.72 0.19 95);
+
+  --color-live: oklch(0.62 0.21 25);
+
+  --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Tabular figures at display size: a clock whose digits change width jitters
+     on every tick, which is maddening to watch. */
+  --font-mono-tabular: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+    --bg: var(--color-paper);
+    --fg: var(--color-ink);
+    --surface: oklch(1 0 0);
+    --border: var(--color-line);
+    --dim: var(--color-muted);
+  }
+
+  /* Evening sessions and dog-park car parks after dark. */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: oklch(0.16 0.012 250);
+      --fg: oklch(0.97 0.003 250);
+      --surface: oklch(0.21 0.014 250);
+      --border: oklch(0.32 0.014 250);
+      --dim: oklch(0.68 0.015 250);
+    }
+  }
+
+  html {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-display);
+    /* Stops iOS inflating text in landscape, which would wreck the grid. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    /* Respect the notch and the home indicator; the scoring grid runs to the
+       very bottom of the screen. */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* No accidental text selection or callout menus while tapping fast. */
+  button, .tap {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-zone-2);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Alpine hides these until it initialises, which stops a flash of raw
+     template markup on a slow phone. */
+  [x-cloak] { display: none !important; }
+}
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+  }
+
+  /* The scoring buttons. 4.5rem minimum because a thumb on a cold morning is
+     not a mouse pointer, and a mis-tap here costs a real team real points. */
+  .zone-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 4.5rem;
+    border-radius: 0.75rem;
+    border: none;
+    color: oklch(0.99 0 0);
+    font-weight: 800;
+    line-height: 1.05;
+    transition: transform 80ms ease-out, filter 80ms ease-out;
+  }
+
+  .zone-btn:active {
+    transform: scale(0.96);
+    filter: brightness(1.15);
+  }
+
+  .zone-btn[disabled] {
+    opacity: 0.35;
+    filter: grayscale(0.6);
+  }
+
+  .zone-btn .label { font-size: 0.95rem; letter-spacing: 0.01em; }
+  .zone-btn .points { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+
+  .clock {
+    font-family: var(--font-mono-tabular);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+@layer utilities {
+  /* The last ten seconds. Pulsing the whole clock is the one piece of motion
+     that earns its place: it is visible from the sideline without looking. */
+  .clock-urgent {
+    color: var(--color-live);
+    animation: clock-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes clock-pulse {
+    50% { opacity: 0.45; }
+  }
+}
