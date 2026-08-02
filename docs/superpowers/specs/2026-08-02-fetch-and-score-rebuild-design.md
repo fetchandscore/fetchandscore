@@ -46,6 +46,32 @@ Source: <https://tossandfetch.com/league-rules-policies/>
 
 Because of the 0.5 air bonus and the 7.5 WWC handicap, **all points are stored as integer half-points** (`points_x2`). No floating-point money-style bugs.
 
+### Rule interpretations
+
+Two clauses in the published rules are genuinely ambiguous. Implementing them
+required picking a reading; both are decided below, encoded in
+`api/internal/scoring/`, and each is a single constant should the league rule
+otherwise.
+
+**A bonus needs a scoring catch to attach to.** A catch inside 10 yards or out
+of bounds scores zero, and neither the air bonus nor the tiny-dog bonus applies
+to it. The rules say the tiny bonus is "1 bonus point per catch", but the
+published tiny-dog table starts at 10–20 yards, and the air bonus is plainly
+not intended to turn a zero-point catch into half a point. *Worth confirming
+with a league official before the first season is scored for real.*
+
+**The tiny bonus stacks on the junior consolation point.** A junior handler
+with a tiny dog scores 2 for a catch short of 10 yards or out of bounds: 1 for
+the junior good-faith catch, 1 for the tiny dog. The junior clause withholds
+the air bonus *by name* and says nothing about the tiny bonus, and the rules
+separately confirm that junior roller teams and tiny roller teams each keep
+their own award.
+
+**Throw distance is the scorekeeper's judgment.** The junior clause qualifies
+its point with "if attempted from at least 10 yards away". The app has no way
+to measure that, so recording the outcome *is* the judgment call — there is no
+separate confirmation step.
+
 ## Repository layout
 
 ```

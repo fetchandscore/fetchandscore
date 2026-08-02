@@ -154,6 +154,35 @@ func TestScoreThrow_JuniorHandlerException(t *testing.T) {
 	}
 }
 
+// The junior exception strips the air bonus by name but says nothing about
+// the tiny-dog bonus, and the rules separately confirm that junior roller
+// teams and tiny roller teams each keep their own award. So the tiny bonus
+// stacks on the junior consolation point.
+func TestScoreThrow_JuniorHandlerWithTinyDog(t *testing.T) {
+	juniorTiny := Flags{Tiny: true, Division: DivisionJunior}
+
+	tests := []struct {
+		name  string
+		throw Throw
+		want  HalfPoints
+	}{
+		{"a short catch earns the junior point plus the tiny bonus", Throw{Zone: Zone0_10}, hp(2)},
+		{"an out-of-bounds catch earns both as well", Throw{Zone: ZoneOut}, hp(2)},
+		{"the air bonus is still withheld", Throw{Zone: Zone0_10, Air: true}, hp(2)},
+		{"a miss earns neither", Throw{Zone: ZoneMiss}, hp(0)},
+		{"scoring zones are unaffected and keep the tiny bonus", Throw{Zone: Zone30_40}, hp(4)},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ScoreThrow(tc.throw, juniorTiny)
+			if got != tc.want {
+				t.Errorf("ScoreThrow(%+v, junior+tiny) = %v half-points, want %v", tc.throw, got, tc.want)
+			}
+		})
+	}
+}
+
 // throws is a shorthand for building a round from zones, so the round tests
 // stay readable.
 func throws(zones ...Zone) []Throw {

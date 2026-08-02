@@ -114,10 +114,15 @@ const juniorShortCatch HalfPoints = 2 // 1 point
 
 // ScoreThrow returns the value of a single throw.
 func ScoreThrow(t Throw, f Flags) HalfPoints {
-	// A junior handler earns a flat point for a good-faith catch that falls
-	// short or lands out, and explicitly no air bonus on top of it.
+	// A junior handler earns a point for a good-faith catch that falls short
+	// or lands out. The rules withhold the air bonus here by name but say
+	// nothing about the tiny-dog bonus, which therefore still applies.
 	if f.Division == DivisionJunior && (t.Zone == Zone0_10 || t.Zone == ZoneOut) {
-		return juniorShortCatch
+		score := juniorShortCatch
+		if f.Tiny {
+			score += tinyBonus
+		}
+		return score
 	}
 
 	if !isScoringCatch(t) {
