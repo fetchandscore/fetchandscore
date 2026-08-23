@@ -4,7 +4,7 @@
 # distroless base. The result is around 20MB and contains no shell, no package
 # manager, and nothing else an attacker could pivot through.
 
-FROM golang:1.26-alpine AS build
+FROM golang:1.27-alpine AS build
 
 WORKDIR /src
 
